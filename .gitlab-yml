@@ -1,0 +1,63 @@
+###############################
+# 该文件是GitLab CI/CD的配置文件
+# 以下三个地方需要修改为真实地址
+# 1.node
+# 2.JAVA_HOME
+# 3.COMMANDLINE_TOOL_DIR
+###############################
+variables:
+  PROJECT_PATH: $CI_PROJECT_DIR
+  MODULE_NAME: "entry" # 模块名
+  PROJECT_NAME: "default" # 项目名
+  TARGET_NAME: "default" # 目标名
+
+before_script:
+  ## 注意！！！
+  ## 需要node配置成真实地址
+  ## 1.配置命令行工具地址
+  - export PATH="/opt/homebrew/opt/node@20/bin:$PATH"
+  - echo "$PROJECT_PATH"
+  - npm config set registry=https://repo.huaweicloud.com/repository/npm/
+  - npm config set @ohos:registry=https://repo.harmonyos.com/npm/
+  - npm -v
+  ## 注意！！！
+  ## 需要COMMANDLINE_TOOL_DIR配置成真实地址
+  - export COMMANDLINE_TOOL_DIR=xxxxxx
+  - export PATH=${COMMANDLINE_TOOL_DIR}/command-line-tools/bin:$PATH
+  ## 注意！！！
+  ## 需要JAVA_HOME配置成真实地址
+  ## 2.配置java
+  - export JAVA_HOME=xxxxx
+  - export PATH=$JAVA_HOME/bin:$PATH
+  ## 3.配置hdc
+  - export HDC_HOME=${COMMANDLINE_TOOL_DIR}/command-line-tools/sdk/HarmonyOS-NEXT-DB2/openharmony/toolchains
+  - export HOS_SDK_HOME=${COMMANDLINE_TOOL_DIR}/command-line-tools/sdk
+  - export PATH=$PATH:$HDC_HOME:$HOS_SDK_HOME
+  ## 4.ohpm
+  - ohpm -v
+  - ohpm config set registry https://ohpm.openharmony.cn/ohpm/
+  - ohpm config set strict_ssl false
+  - echo $PATH
+
+stages:
+  - build_action
+
+build_action:
+  stage: build_action
+  rules:
+    # 在手动触发时执行
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    # 在分支被合并时执行
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - cd $PROJECT_PATH
+    - ohpm install
+    - cd "${PROJECT_PATH}/entry"
+    - ohpm install
+    - cd "$PROJECT_PATH"
+    - hvigorw clean --no-daemon
+    - hvigorw assembleHap --mode module -p product=default -p buildMode=debug --no-daemon
+  artifacts:
+    paths:
+      - "${PROJECT_PATH}/${MODULE_NAME}/build/${PROJECT_NAME}/outputs/${TARGET_NAME}/*-signed.hap"
+    expire_in: 1 month # 产物保留一个月时间
